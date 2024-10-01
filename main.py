@@ -5,6 +5,10 @@ from threading import Thread
 import json
 import random
 from datetime import datetime
+import logging
+
+# Установка уровня логирования
+logging.basicConfig(level=logging.INFO)
 
 # Ваш токен от BotFather
 TOKEN = '7598457393:AAGYDyzb67hgudu1e1wPiqet0imV-F6ZCiI'
@@ -115,12 +119,15 @@ def schedule_reminders():
     if current_time.hour >= 10 and current_time.hour < 20:
         send_water_reminder()
     else:
-        print("Время не подходит для отправки напоминаний.")
+        logging.info("Время не подходит для отправки напоминаний.")
 
 # Запускаем планировщик в отдельном потоке
 def run_schedule():
     while True:
-        schedule_reminders()  # Проверяем и отправляем напоминания
+        try:
+            schedule_reminders()  # Проверяем и отправляем напоминания
+        except Exception as e:
+            logging.error(f"Ошибка в планировщике: {e}")
         time.sleep(7200)  # Ждем 2 часа
 
 # Запускаем поток для планировщика
@@ -128,4 +135,7 @@ Thread(target=run_schedule).start()
 
 # Загружаем состояние пользователей и запускаем бота
 load_user_states()
-bot.polling(none_stop=True)
+try:
+    bot.polling(none_stop=True)
+except Exception as e:
+    logging.error(f"Ошибка в polling: {e}")
