@@ -136,7 +136,7 @@ def webhook():
 @app.route('/set_webhook', methods=['GET'])
 def set_webhook():
     bot.remove_webhook()
-    bot.set_webhook(url='YOUR_WEBHOOK_URL')  # Замените на свой URL
+    bot.set_webhook(url='vita-production-7c0a.up.railway.app')  # Замените на свой URL
     return "Webhook set!", 200
 
 # Запуск Flask-приложения
