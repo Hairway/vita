@@ -82,9 +82,8 @@ def test_mode_end(message):
 def send_water_reminder():
     global last_reminder_message
     if last_chat_id:
-        # Выбираем случайное сообщение, которое не совпадает с последним
         message = random.choice([msg for msg in reminder_messages if msg != last_reminder_message])
-        last_reminder_message = message  # Обновляем последнее сообщение
+        last_reminder_message = message
         bot.send_message(last_chat_id, message)
 
         # Добавляем inline кнопку для подтверждения
@@ -132,7 +131,7 @@ def run_schedule():
         time.sleep(60)  # Ждем 1 минуту
 
 # Запускаем поток для планировщика
-Thread(target=run_schedule).start()
+Thread(target=run_schedule, daemon=True).start()  # Убедитесь, что поток является демоном
 
 # Загружаем состояние пользователей и запускаем бота
 load_user_states()
