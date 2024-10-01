@@ -12,10 +12,10 @@ TOKEN = '7598457393:AAGYDyzb67hgudu1e1wPiqet0imV-F6ZCiI'
 # Создаем экземпляр бота
 bot = telebot.TeleBot(TOKEN)
 
-# Глобальная переменная для хранения последнего чата и состояния теста
+# Глобальная переменная для хранения последнего чата и состояния
 last_chat_id = None
-test_mode = False
 user_states = {}
+paused = False
 
 # Сообщения-напоминания
 reminder_messages = [
@@ -44,55 +44,50 @@ def save_user_states():
     with open('user_state.json', 'w') as f:
         json.dump(user_states, f)
 
+# Проверка, будний ли день
+def is_weekday():
+    return datetime.now().weekday() < 5  # 0-4 - будние дни
+
+# Запуск напоминаний
+def start_reminders():
+    while True:
+        if not paused and is_weekday():
+            current_time = datetime.now(pytz.timezone('Europe/Moscow')).strftime("%H:%M")
+            if current_time in ["10:00", "12:00", "14:00", "16:00", "18:00", "20:00"]:
+                send_water_reminder()
+                if current_time == "12:00":
+                    send_tablet_reminder()
+        time.sleep(60)  # Проверяем каждую минуту
+
 # Команда /start
 @bot.message_handler(commands=['start'])
 def start_message(message):
-    global last_chat_id
+    global last_chat_id, paused
     last_chat_id = message.chat.id
+    paused = False
     bot.send_message(last_chat_id, "Котка, привет! Я тебя очень люблю ❤️ \n\n"
-                                    "Я стараюсь следить за тем, чтобы ты чаще пила водичку, но подумал, что могу выйти из дома, быть на тренировке или заработаться, или заучиться.\n\n"
-                                    "Поэтому я специально написал этот телеграм бота, который будет напоминать тебе об этом 😁\n\n"
-                                    "Каждый будний день с 10 до 8 вечера он каждые 2 часа будет отправлять тебе напоминание о том, что пора сделать хотя бы пару глоточков) Надо только подтвердить, что ты попила. Но не жульничай!\n\n"
-                                    "А если ты будешь его игнорировать (а не надо), то каждые 10 минут он будет напоминать тебе вновь)))")
+                                    "Я буду напоминать тебе пить воду и принимать таблетки. Каждый будний день с 10 до 20 часов я буду отправлять тебе напоминания. "
+                                    "Если ты не нажмешь кнопку подтверждения, я буду напоминать тебе каждые 10 минут, пока не нажмешь.")
 
-# Команда /test
-@bot.message_handler(commands=['test'])
-def test_mode_start(message):
-    global test_mode
-    test_mode = True
-    bot.send_message(message.chat.id, "Тестовый режим активирован! Сейчас отправлю напоминания...")
-    send_water_reminder()
-    send_tablet_reminder()
+    # Запускаем поток с напоминаниями
+    Thread(target=start_reminders).start()
 
-# Команда /testend
-@bot.message_handler(commands=['testend'])
-def test_mode_end(message):
-    global test_mode
-    test_mode = False
-    bot.send_message(message.chat.id, "Тестовый режим завершен. Бот вернулся к обычному режиму.")
+# Команда /pause
+@bot.message_handler(commands=['pause'])
+def pause_reminders(message):
+    global paused
+    paused = True
+    bot.send_message(message.chat.id, "Напоминания приостановлены. Используй команду /start, чтобы возобновить.")
 
 # Функция для отправки напоминания о воде
 def send_water_reminder():
     if last_chat_id:
-        # Выбираем случайное сообщение
         message = reminder_messages[datetime.now().hour % len(reminder_messages)]
         bot.send_message(last_chat_id, message)
-        # Добавляем inline кнопку для подтверждения
         markup = telebot.types.InlineKeyboardMarkup()
         confirm_button = telebot.types.InlineKeyboardButton("✅ Выпил воду", callback_data="confirm_water")
         markup.add(confirm_button)
         bot.send_message(last_chat_id, "Не жульничай, солнышко. Нажми тогда, когда выпила водички", reply_markup=markup)
-
-        # Если в тестовом режиме, повторяем через минуту
-        if test_mode:
-            bot.send_message(last_chat_id, "Если не подтвердил, я напомню через минуту.")
-            Thread(target=repeat_water_reminder, args=(last_chat_id,)).start()
-
-# Функция для повторного напоминания о воде
-def repeat_water_reminder(chat_id):
-    time.sleep(60)  # Ждем минуту
-    if test_mode:  # Проверяем, всё еще в тестовом режиме
-        send_water_reminder()
 
 # Функция для отправки напоминания о таблетке
 def send_tablet_reminder():
@@ -101,17 +96,6 @@ def send_tablet_reminder():
         confirm_button = telebot.types.InlineKeyboardButton("✅ Таблетку выпила", callback_data="confirm_tablet")
         markup.add(confirm_button)
         bot.send_message(last_chat_id, tablet_message, reply_markup=markup)
-
-        # Если в тестовом режиме, повторяем через минуту
-        if test_mode:
-            bot.send_message(last_chat_id, "Если не подтвердил, я напомню через минуту.")
-            Thread(target=repeat_tablet_reminder, args=(last_chat_id,)).start()
-
-# Функция для повторного напоминания о таблетке
-def repeat_tablet_reminder(chat_id):
-    time.sleep(60)  # Ждем минуту
-    if test_mode:  # Проверяем, всё еще в тестовом режиме
-        send_tablet_reminder()
 
 # Обработчик нажатия на кнопку для воды
 @bot.callback_query_handler(func=lambda call: call.data == "confirm_water")
