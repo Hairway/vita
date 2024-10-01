@@ -1,5 +1,4 @@
 import telebot
-import schedule
 import time
 from threading import Thread
 from datetime import datetime
@@ -53,6 +52,7 @@ def start_reminders():
     while True:
         if not paused and is_weekday():
             current_time = datetime.now(pytz.timezone('Europe/Moscow')).strftime("%H:%M")
+            print(f"Текущее время: {current_time}")  # Отладка
             if current_time in ["10:00", "12:00", "14:00", "16:00", "18:00", "19:00", "19:05", "19:10", "20:00"]:
                 send_water_reminder()
                 if current_time == "12:00":
