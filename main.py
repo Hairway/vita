@@ -1,14 +1,13 @@
+from flask import Flask, request
 import telebot
 import schedule
 import time
 from threading import Thread
-from flask import Flask, request
-import os
 import random
 import json
-import logging
 from datetime import datetime
-import pytz  # Импортируем pytz для работы с часовыми поясами
+import pytz
+import logging
 
 # Установка уровня логирования
 logging.basicConfig(level=logging.INFO)
@@ -16,11 +15,9 @@ logging.basicConfig(level=logging.INFO)
 # Ваш токен от BotFather
 TOKEN = '7598457393:AAGYDyzb67hgudu1e1wPiqet0imV-F6ZCiI'
 
-# Создаем экземпляр бота
-bot = telebot.TeleBot(TOKEN)
-
-# Создаем экземпляр Flask
+# Создаем экземпляр Flask приложения
 app = Flask(__name__)
+bot = telebot.TeleBot(TOKEN)
 
 # Глобальные переменные
 last_chat_id = None
@@ -36,7 +33,7 @@ reminder_messages = [
 tablet_message = "А ещё, котка, уже время выпить таблетку! Попроси меня и я принесу 💊"
 last_reminder_message = None
 
-# Функция для загрузки состояния пользователей
+# Загружаем состояние пользователей
 def load_user_states():
     global user_states
     try:
@@ -45,7 +42,7 @@ def load_user_states():
     except FileNotFoundError:
         user_states = {}
 
-# Функция для сохранения состояния пользователей
+# Сохраняем состояние пользователей
 def save_user_states():
     with open('user_state.json', 'w') as f:
         json.dump(user_states, f)
@@ -88,29 +85,23 @@ def send_tablet_reminder():
 def handle_confirmation(call):
     if call.message:
         bot.send_message(call.message.chat.id, "Ты у меня самая лучшая! 😊")
-        # Здесь можно добавить логику для сохранения состояния
 
 # Обработчик нажатия на кнопку для таблетки
 @bot.callback_query_handler(func=lambda call: call.data == "confirm_tablet")
 def handle_tablet_confirmation(call):
     if call.message:
         bot.send_message(call.message.chat.id, "Просто умничка! Не забудь отметить в своём приложении, чтобы не забыть 😊")
-        # Здесь можно добавить логику для сохранения состояния
 
 # Функция для проверки времени и отправки напоминаний
 def schedule_reminders():
-    # Устанавливаем московское время
     moscow_tz = pytz.timezone('Europe/Moscow')
     current_time = datetime.now(moscow_tz)
 
-    # Проверяем, что сегодня будний день
     if current_time.weekday() < 5:  # 0 - понедельник, 4 - пятница
         if current_time.hour >= 10 and current_time.hour <= 20:
             send_water_reminder()
-            # Отправляем напоминание о таблетке, если это 12:00
             if current_time.hour == 12:
                 send_tablet_reminder()
-            # Отправляем напоминание о воде, если это 16:35
             if current_time.hour == 16 and current_time.minute == 35:
                 send_water_reminder()
         else:
@@ -118,35 +109,36 @@ def schedule_reminders():
     else:
         logging.info("Сегодня выходной.")
 
-# Функция для обработки сообщений через вебхук
-@app.route('/' + TOKEN, methods=['POST'])
-def get_message():
-    json_str = request.get_json(force=True)
-    update = telebot.types.Update.de_json(json_str)
-    bot.process_new_updates([update])
-    return '!', 200
-
-@app.route('/')
-def index():
-    return 'Hello, I am a bot!'
-
-# Устанавливаем вебхук перед запуском Flask
-@app.before_first_request
-def setup_webhook():
-    bot.remove_webhook()  # Удаляем предыдущий вебхук, если был установлен
-    bot.set_webhook(url='https://<your-app-name>.railway.app/' + TOKEN)  # Устанавливаем новый вебхук
-
 # Запускаем планировщик
 def run_schedule():
-    schedule.every(2).hours.at(":00").do(schedule_reminders)  # Каждые 2 часа
-    schedule.every(2).hours.at(":30").do(schedule_reminders)  # Каждые 2 часа
+    schedule.every(2).hours.at(":00").do(schedule_reminders)
+    schedule.every(2).hours.at(":30").do(schedule_reminders)
     while True:
-        schedule.run_pending()  # Запускаем все запланированные задачи
-        time.sleep(60)  # Ждем 1 минуту
+        schedule.run_pending()
+        time.sleep(60)
 
-# Запускаем поток для планировщика
-Thread(target=run_schedule, daemon=True).start()  # Убедитесь, что поток является демоном
+# Инициализация приложения перед первым запросом
+@app.before_first_request
+def before_first_request_func():
+    load_user_states()  # Загружаем состояние пользователей при первом запросе
+    # Запускаем поток для планировщика
+    Thread(target=run_schedule, daemon=True).start()
 
-# Загружаем состояние пользователей и запускаем Flask
-load_user_states()
-app.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))  # Запускаем Flask-сервер
+# Устанавливаем вебхук
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    json_str = request.get_data().decode('UTF-8')
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return '', 200
+
+# Устанавливаем webhook
+@app.route('/set_webhook', methods=['GET'])
+def set_webhook():
+    bot.remove_webhook()
+    bot.set_webhook(url='YOUR_WEBHOOK_URL')  # Замените на свой URL
+    return "Webhook set!", 200
+
+# Запуск Flask-приложения
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
