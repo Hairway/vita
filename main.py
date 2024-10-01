@@ -5,12 +5,17 @@ from threading import Thread
 from datetime import datetime
 import pytz
 import json
+import os
+from flask import Flask, request
 
 # Ваш токен от BotFather
 TOKEN = '7598457393:AAGYDyzb67hgudu1e1wPiqet0imV-F6ZCiI'
 
 # Создаем экземпляр бота
 bot = telebot.TeleBot(TOKEN)
+
+# Flask сервер для обработки вебхуков
+app = Flask(__name__)
 
 # Глобальная переменная для хранения последнего чата и состояния
 last_chat_id = None
@@ -109,6 +114,22 @@ def handle_tablet_confirmation(call):
     if call.message:
         bot.send_message(call.message.chat.id, "Просто умничка! Не забудь отметить в своём приложении, чтобы не забыть 😊")
 
-# Запускаем бота
-load_user_states()
-bot.polling(none_stop=True)
+# Вебхук обработчик
+@app.route(f"/{TOKEN}", methods=['POST'])
+def webhook():
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('UTF-8')
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return '', 200
+    else:
+        return 'Invalid content type', 400
+
+# Настройка вебхука
+if __name__ == "__main__":
+    port = int(os.environ.get('PORT', 8080))  # Используем порт 8080 или из окружения
+    bot.remove_webhook()
+    bot.set_webhook(url=f"https://vita-bot.up.railway.app//{TOKEN}")  # Укажите реальный домен
+
+    # Запуск Flask сервера
+    app.run(host="0.0.0.0", port=port)
