@@ -105,9 +105,9 @@ def schedule_reminders():
             # Отправляем напоминание о таблетке, если это 12:00
             if current_time.hour == 12:
                 send_tablet_reminder()
-            # Отправляем напоминание о таблетке, если это 16:20
-            if current_time.hour == 16 and current_time.minute == 20:
-                send_tablet_reminder()
+            # Отправляем напоминание о воде в 16:25
+            if current_time.hour == 16 and current_time.minute == 25:
+                send_water_reminder()
         else:
             logging.info("Время не подходит для отправки напоминаний.")
     else:
