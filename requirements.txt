@@ -2,3 +2,4 @@ pyTelegramBotAPI
 schedule
 python-telegram-bot==13.7
 requests==2.26.0
+pytz  # Добавлено для работы с часовыми поясами

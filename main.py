@@ -4,7 +4,7 @@ import time
 from threading import Thread
 import json
 import random
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 import pytz  # Импортируем pytz для работы с часовыми поясами
 
