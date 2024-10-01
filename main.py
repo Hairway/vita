@@ -2,10 +2,12 @@ import telebot
 import schedule
 import time
 from threading import Thread
-import json
+from flask import Flask, request
+import os
 import random
-from datetime import datetime
+import json
 import logging
+from datetime import datetime
 import pytz  # Импортируем pytz для работы с часовыми поясами
 
 # Установка уровня логирования
@@ -16,6 +18,9 @@ TOKEN = '7598457393:AAGYDyzb67hgudu1e1wPiqet0imV-F6ZCiI'
 
 # Создаем экземпляр бота
 bot = telebot.TeleBot(TOKEN)
+
+# Создаем экземпляр Flask
+app = Flask(__name__)
 
 # Глобальные переменные
 last_chat_id = None
@@ -113,6 +118,24 @@ def schedule_reminders():
     else:
         logging.info("Сегодня выходной.")
 
+# Функция для обработки сообщений через вебхук
+@app.route('/' + TOKEN, methods=['POST'])
+def get_message():
+    json_str = request.get_json(force=True)
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return '!', 200
+
+@app.route('/')
+def index():
+    return 'Hello, I am a bot!'
+
+# Устанавливаем вебхук перед запуском Flask
+@app.before_first_request
+def setup_webhook():
+    bot.remove_webhook()  # Удаляем предыдущий вебхук, если был установлен
+    bot.set_webhook(url='https://<your-app-name>.railway.app/' + TOKEN)  # Устанавливаем новый вебхук
+
 # Запускаем планировщик
 def run_schedule():
     schedule.every(2).hours.at(":00").do(schedule_reminders)  # Каждые 2 часа
@@ -124,6 +147,6 @@ def run_schedule():
 # Запускаем поток для планировщика
 Thread(target=run_schedule, daemon=True).start()  # Убедитесь, что поток является демоном
 
-# Загружаем состояние пользователей и запускаем бота
+# Загружаем состояние пользователей и запускаем Flask
 load_user_states()
-bot.polling(none_stop=True)  # Бот работает в бесконечном цикле
+app.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))  # Запускаем Flask-сервер
