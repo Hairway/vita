@@ -118,17 +118,18 @@ def schedule_reminders():
     current_time = datetime.now()
     if current_time.hour >= 10 and current_time.hour < 20:
         send_water_reminder()
+        # Отправляем напоминание о таблетке, если это 12:00 или 18:00
+        if current_time.hour in [12, 18]:
+            send_tablet_reminder()
     else:
         logging.info("Время не подходит для отправки напоминаний.")
 
-# Запускаем планировщик в отдельном потоке
+# Запускаем планировщик
 def run_schedule():
+    schedule.every(2).hours.do(schedule_reminders)  # Каждые 2 часа
     while True:
-        try:
-            schedule_reminders()  # Проверяем и отправляем напоминания
-        except Exception as e:
-            logging.error(f"Ошибка в планировщике: {e}")
-        time.sleep(7200)  # Ждем 2 часа
+        schedule.run_pending()  # Запускаем все запланированные задачи
+        time.sleep(60)  # Ждем 1 минуту
 
 # Запускаем поток для планировщика
 Thread(target=run_schedule).start()
