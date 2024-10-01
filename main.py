@@ -88,7 +88,7 @@ def send_water_reminder():
 
         # Добавляем inline кнопку для подтверждения
         markup = telebot.types.InlineKeyboardMarkup()
-        confirm_button = telebot.types.InlineKeyboardButton("✅ Выпил воду", callback_data="confirm_water")
+        confirm_button = telebot.types.InlineKeyboardButton("✅ Выпила воду", callback_data="confirm_water")
         markup.add(confirm_button)
         bot.send_message(last_chat_id, "Не жульничай, солнышко. Нажми тогда, когда выпила водички", reply_markup=markup)
 
