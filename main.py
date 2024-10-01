@@ -4,6 +4,7 @@ import time
 from threading import Thread
 import json
 import random
+from datetime import datetime
 
 # Ваш токен от BotFather
 TOKEN = '7598457393:AAGYDyzb67hgudu1e1wPiqet0imV-F6ZCiI'
@@ -81,16 +82,12 @@ def send_water_reminder():
         message = random.choice([msg for msg in reminder_messages if msg != last_reminder_message])
         last_reminder_message = message  # Обновляем последнее сообщение
         bot.send_message(last_chat_id, message)
+        
         # Добавляем inline кнопку для подтверждения
         markup = telebot.types.InlineKeyboardMarkup()
         confirm_button = telebot.types.InlineKeyboardButton("✅ Выпил воду", callback_data="confirm_water")
         markup.add(confirm_button)
         bot.send_message(last_chat_id, "Не жульничай, солнышко. Нажми тогда, когда выпила водички", reply_markup=markup)
-
-        # Если не в тестовом режиме, продолжаем напоминания
-        if not test_mode:
-            # Запланируем отправку следующего напоминания через 2 часа
-            schedule.every(2).hours.do(send_water_reminder)
 
 # Функция для отправки напоминания о таблетке
 def send_tablet_reminder():
@@ -99,11 +96,6 @@ def send_tablet_reminder():
         confirm_button = telebot.types.InlineKeyboardButton("✅ Таблетку выпила", callback_data="confirm_tablet")
         markup.add(confirm_button)
         bot.send_message(last_chat_id, tablet_message, reply_markup=markup)
-
-        # Если не в тестовом режиме, продолжаем напоминания
-        if not test_mode:
-            # Запланируем отправку следующего напоминания через 30 минут, если не подтверждено
-            schedule.every().day.at("12:00").do(send_tablet_reminder)
 
 # Обработчик нажатия на кнопку для воды
 @bot.callback_query_handler(func=lambda call: call.data == "confirm_water")
@@ -117,11 +109,19 @@ def handle_tablet_confirmation(call):
     if call.message:
         bot.send_message(call.message.chat.id, "Просто умничка! Не забудь отметить в своём приложении, чтобы не забыть 😊")
 
+# Функция для проверки времени и отправки напоминаний
+def schedule_reminders():
+    current_time = datetime.now()
+    if current_time.hour >= 10 and current_time.hour < 20:
+        send_water_reminder()
+    else:
+        print("Время не подходит для отправки напоминаний.")
+
 # Запускаем планировщик в отдельном потоке
 def run_schedule():
     while True:
-        schedule.run_pending()
-        time.sleep(1)
+        schedule_reminders()  # Проверяем и отправляем напоминания
+        time.sleep(7200)  # Ждем 2 часа
 
 # Запускаем поток для планировщика
 Thread(target=run_schedule).start()
