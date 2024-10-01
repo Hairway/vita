@@ -4,8 +4,9 @@ import time
 from threading import Thread
 import json
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
+import pytz  # Импортируем pytz для работы с часовыми поясами
 
 # Установка уровня логирования
 logging.basicConfig(level=logging.INFO)
@@ -114,14 +115,17 @@ def handle_tablet_confirmation(call):
 
 # Функция для проверки времени и отправки напоминаний
 def schedule_reminders():
-    current_time = datetime.now()
+    # Устанавливаем московское время
+    moscow_tz = pytz.timezone('Europe/Moscow')
+    current_time = datetime.now(moscow_tz)
+
     if current_time.hour >= 10 and current_time.hour < 20:
         send_water_reminder()
         # Отправляем напоминание о таблетке, если это 12:00 или 18:00
         if current_time.hour in [12, 18]:
             send_tablet_reminder()
-        # Добавляем напоминание на 15:10
-        if current_time.hour == 15 and current_time.minute == 10:
+        # Отправляем напоминание в 15:15
+        if current_time.hour == 15 and current_time.minute == 15:
             send_water_reminder()
     else:
         logging.info("Время не подходит для отправки напоминаний.")
