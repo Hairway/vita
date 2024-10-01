@@ -53,7 +53,7 @@ def start_reminders():
     while True:
         if not paused and is_weekday():
             current_time = datetime.now(pytz.timezone('Europe/Moscow')).strftime("%H:%M")
-            if current_time in ["10:00", "12:00", "14:00", "16:00", "18:00", "20:00"]:
+            if current_time in ["10:00", "12:00", "14:00", "16:00", "18:00", "19:00", "19:05", "19:10", "20:00"]:
                 send_water_reminder()
                 if current_time == "12:00":
                     send_tablet_reminder()
