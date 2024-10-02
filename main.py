@@ -1,3 +1,4 @@
+import time
 import telebot
 from threading import Thread
 from datetime import datetime
@@ -73,7 +74,8 @@ def start_message(message):
                                    "Если ты не нажмешь кнопку подтверждения, я буду напоминать тебе каждые 10 минут, пока не нажмешь.")
 
     # Запускаем поток с напоминаниями
-    Thread(target=start_reminders).start()
+    reminder_thread = Thread(target=start_reminders)
+    reminder_thread.start()
 
 # Команда /pause
 @bot.message_handler(commands=['pause'])
@@ -125,6 +127,9 @@ def webhook():
 
 # Настройка вебхука
 if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 8080))  # Используем порт 8080 или из окружения
+    # Настраиваем вебхук
     bot.remove_webhook()
-    bot.set_webhook(url=f"https://vita-bot.up.railway.app/{TOKEN}")  # Укажите реальный домен
+    bot.set_webhook(url=f"https://<YOUR-RAILWAY-APP-URL>/{TOKEN}")
+
+    # Запуск Flask приложения
+    app.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))
