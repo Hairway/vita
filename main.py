@@ -1,6 +1,4 @@
 import telebot
-import schedule
-import time
 from threading import Thread
 from datetime import datetime
 import pytz
@@ -58,7 +56,7 @@ def start_reminders():
     while True:
         if not paused and is_weekday():
             current_time = datetime.now(pytz.timezone('Europe/Moscow')).strftime("%H:%M")
-            if current_time in ["10:00", "12:00", "14:00", "16:00", "18:00", "20:00", "19:00", "19:05", "19:10"]:
+            if current_time in ["10:00", "12:00", "14:00", "16:00", "18:00", "20:00"]:
                 send_water_reminder()
                 if current_time == "12:00":
                     send_tablet_reminder()
@@ -130,6 +128,3 @@ if __name__ == "__main__":
     port = int(os.environ.get('PORT', 8080))  # Используем порт 8080 или из окружения
     bot.remove_webhook()
     bot.set_webhook(url=f"https://vita-bot.up.railway.app/{TOKEN}")  # Укажите реальный домен
-
-    # Запуск Flask сервера
-    app.run(host="0.0.0.0", port=port)

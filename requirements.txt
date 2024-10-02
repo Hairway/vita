@@ -1,4 +1,5 @@
-pyTelegramBotAPI
+telebot
 Flask
+gunicorn
 pytz
 schedule
