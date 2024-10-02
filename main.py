@@ -16,7 +16,7 @@ bot = telebot.TeleBot(TOKEN)
 # Flask сервер для обработки вебхуков
 app = Flask(__name__)
 
-# Глобальная переменная для хранения последнего чата и состояния
+# Глобальные переменные для хранения последнего чата и состояния
 last_chat_id = None
 user_states = {}
 paused = False
@@ -33,6 +33,10 @@ reminder_messages = [
 
 # Сообщение о таблетке
 tablet_message = "А ещё, котка, уже время выпить таблетку! Попроси меня и я принесу 💊"
+
+# Флаги для напоминаний
+water_reminder_sent = False  # Флаг для напоминания о воде
+tablet_reminder_sent = False  # Флаг для напоминания о таблетке
 
 # Функция для загрузки состояния пользователей
 def load_user_states():
@@ -57,7 +61,7 @@ def start_reminders():
     while True:
         if not paused and is_weekday():
             current_time = datetime.now(pytz.timezone('Europe/Moscow')).strftime("%H:%M")
-            if current_time in ["10:00", "12:00", "14:00", "16:00", "18:00", "20:00"]:
+            if current_time in ["10:00", "12:00", "14:00", "15:20", "16:00", "18:00", "20:00"]:
                 send_water_reminder()
                 if current_time == "12:00":
                     send_tablet_reminder()
@@ -87,6 +91,22 @@ def pause_reminders(message):
 
 # Функция для отправки напоминания о воде
 def send_water_reminder():
+    global water_reminder_sent
+    if last_chat_id and not water_reminder_sent:
+        message = reminder_messages[datetime.now().hour % len(reminder_messages)]
+        bot.send_message(last_chat_id, message)
+        markup = telebot.types.InlineKeyboardMarkup()
+        confirm_button = telebot.types.InlineKeyboardButton("✅ Выпил воду", callback_data="confirm_water")
+        markup.add(confirm_button)
+        bot.send_message(last_chat_id, "Не жульничай, солнышко. Нажми тогда, когда выпила водички", reply_markup=markup)
+        water_reminder_sent = True  # Установить флаг, что напоминание отправлено
+
+        # Запуск таймера для повторного напоминания
+        Thread(target=repeat_water_reminder).start()
+
+# Функция для повторного напоминания
+def repeat_water_reminder():
+    time.sleep(600)  # Ждем 10 минут
     if last_chat_id:
         message = reminder_messages[datetime.now().hour % len(reminder_messages)]
         bot.send_message(last_chat_id, message)
@@ -95,25 +115,35 @@ def send_water_reminder():
         markup.add(confirm_button)
         bot.send_message(last_chat_id, "Не жульничай, солнышко. Нажми тогда, когда выпила водички", reply_markup=markup)
 
+    # Сбрасываем флаг после повторного напоминания
+    global water_reminder_sent
+    water_reminder_sent = False
+
 # Функция для отправки напоминания о таблетке
 def send_tablet_reminder():
-    if last_chat_id:
+    global tablet_reminder_sent
+    if last_chat_id and not tablet_reminder_sent:
         markup = telebot.types.InlineKeyboardMarkup()
         confirm_button = telebot.types.InlineKeyboardButton("✅ Таблетку выпила", callback_data="confirm_tablet")
         markup.add(confirm_button)
         bot.send_message(last_chat_id, tablet_message, reply_markup=markup)
+        tablet_reminder_sent = True  # Установить флаг, что напоминание отправлено
 
 # Обработчик нажатия на кнопку для воды
 @bot.callback_query_handler(func=lambda call: call.data == "confirm_water")
 def handle_confirmation(call):
     if call.message:
         bot.send_message(call.message.chat.id, "Ты у меня самая лучшая! 😊")
+        global water_reminder_sent
+        water_reminder_sent = False  # Сбросить флаг напоминания о воде
 
 # Обработчик нажатия на кнопку для таблетки
 @bot.callback_query_handler(func=lambda call: call.data == "confirm_tablet")
 def handle_tablet_confirmation(call):
     if call.message:
         bot.send_message(call.message.chat.id, "Просто умничка! Не забудь отметить в своём приложении, чтобы не забыть 😊")
+        global tablet_reminder_sent
+        tablet_reminder_sent = False  # Сбросить флаг напоминания о таблетке
 
 # Вебхук обработчик
 @app.route(f"/{TOKEN}", methods=['POST'])
