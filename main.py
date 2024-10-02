@@ -70,7 +70,7 @@ def start_message(message):
     last_chat_id = message.chat.id
     paused = False
     bot.send_message(last_chat_id, "Котка, привет! Я тебя очень люблю ❤️\n\n"
-                                   "Я стараюсь следить за тем, чтобы ты чаще пила водичку, но подумал, что могу выйти из дома, быть на тренировке или заработаться, или заучиться.\n"
+                                   "Я стараюсь следить за тем, чтобы ты чаще пила водичку, но подумал, что могу выйти из дома, быть на тренировке или заработаться, или заучиться.\n\n"
                                    "Поэтому я специально написал этот телеграм бота, который будет напоминать тебе об этом!\n\n"
                                    "Каждый будний день с 10 до 8 вечера он каждые 2 часа будет отправлять тебе напоминание о том, что пора сделать хотя бы пару глоточков) Надо только подтвердить, что ты попила. Но не жульничай!!!\n\n"
                                    "А если ты будешь его игнорировать (а не надо), то каждые 10 минут он будет напоминать тебе)")
@@ -91,7 +91,7 @@ def send_water_reminder():
         message = reminder_messages[datetime.now().hour % len(reminder_messages)]
         bot.send_message(last_chat_id, message)
         markup = telebot.types.InlineKeyboardMarkup()
-        confirm_button = telebot.types.InlineKeyboardButton("✅ Выпила воду", callback_data="confirm_water")
+        confirm_button = telebot.types.InlineKeyboardButton("✅ Выпил воду", callback_data="confirm_water")
         markup.add(confirm_button)
         bot.send_message(last_chat_id, "Не жульничай, солнышко. Нажми тогда, когда выпила водички", reply_markup=markup)
 
