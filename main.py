@@ -190,5 +190,5 @@ if __name__ == "__main__":
     load_user_states()  # Загрузка состояний пользователей при старте
     port = int(os.environ.get('PORT', 8080))  # Используем порт 8080 или из окружения
     bot.remove_webhook()
-    bot.set_webhook(url=f"https://vita-bot.up.railway.app/{TOKEN}")  # Укажите реальный домен
+    bot.set_webhook(url=f"https://vita-bot.up.railway.app/{TOKEN}")  # Ваш проект на Railway
     app.run(host='0.0.0.0', port=port)  # Запуск Flask сервера
