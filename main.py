@@ -8,7 +8,7 @@ import time
 from flask import Flask, request
 
 # Ваш токен от BotFather
-TOKEN = 'ВАШ_ТОКЕН'
+TOKEN = '7598457393:AAGYDyzb67hgudu1e1wPiqet0imV-F6ZCiI'
 
 # Создаем экземпляр бота
 bot = telebot.TeleBot(TOKEN)
