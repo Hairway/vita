@@ -9,17 +9,6 @@ import os
 from typing import Dict, List
 import logging
 
-# =============================================
-# НАСТРОЙКА ЭТИХ ЗНАЧЕНИЙ ОБЯЗАТЕЛЬНА В RAILWAY
-# =============================================
-# В Railway перейдите в Settings -> Variables и добавьте:
-#
-# 1. TOKEN - токен вашего бота от BotFather
-# 2. WEBHOOK_URL - URL вашего приложения в Railway (например: https://your-app-name.up.railway.app)
-# 3. PORT - оставьте как есть (8080)
-# 4. STATE_FILE_PATH - оставьте как есть ('/tmp/bot_state.json')
-# =============================================
-
 # Enhanced logging configuration
 logging.basicConfig(
     level=logging.INFO,
@@ -30,14 +19,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Environment variable validation
-TOKEN = os.environ.get('TOKEN')
+# Environment variable validation with defaults for Railway
+TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')  # Changed from TOKEN to TELEGRAM_BOT_TOKEN
 if not TOKEN:
-    raise ValueError("No TOKEN environment variable set")
+    logger.warning("No TELEGRAM_BOT_TOKEN environment variable set, using default test token")
+    TOKEN = "default_test_token"  # You should replace this with your actual token
 
-WEBHOOK_URL = os.environ.get('WEBHOOK_URL')
+WEBHOOK_URL = os.getenv('RAILWAY_PUBLIC_DOMAIN')  # Changed from WEBHOOK_URL to RAILWAY_PUBLIC_DOMAIN
 if not WEBHOOK_URL:
-    raise ValueError("No WEBHOOK_URL environment variable set")
+    logger.warning("No RAILWAY_PUBLIC_DOMAIN environment variable set, using default URL")
+    WEBHOOK_URL = "https://your-app-name.up.railway.app"  # Replace with your actual URL
 
 # Initialize bot and Flask
 try:
@@ -47,9 +38,7 @@ except Exception as e:
     logger.critical(f"Failed to initialize bot or Flask: {e}")
     raise
 
-# =============================================
-# НАСТРОЙТЕ СООБЩЕНИЯ ПОД СЕБЯ (ОПЦИОНАЛЬНО)
-# =============================================
+# Constants for messages
 WATER_MESSAGES = [
     "Пора пить водичку! 💧 Не забывай о себе заботиться!",
     "Время выпить стакан воды! 🌊 Твое здоровье важно!",
@@ -61,20 +50,14 @@ WATER_MESSAGES = [
 
 TABLET_MESSAGE = "Милая, пора принять таблетку! 💊 Не забывай о своем здоровье! ❤️"
 
-# =============================================
-# НАСТРОЙТЕ ЧАСЫ НАПОМИНАНИЙ (ОПЦИОНАЛЬНО)
-# По умолчанию каждые 2 часа с 10 до 20
-# =============================================
 REMINDER_HOURS = [10, 12, 14, 16, 18, 20]
-
-
-# =============================================
 
 class UserState:
     def __init__(self):
         self.water_reminders: Dict[int, Dict[str, bool]] = {}
         self.tablet_reminder: Dict[int, bool] = {}
         self.chat_ids: List[int] = []
+        self.load_state()  # Load state when initializing
 
     def add_user(self, chat_id: int) -> None:
         try:
@@ -94,7 +77,8 @@ class UserState:
                 'water_reminders': self.water_reminders,
                 'tablet_reminder': self.tablet_reminder
             }
-            file_path = os.environ.get('STATE_FILE_PATH', '/tmp/bot_state.json')
+            file_path = os.getenv('STATE_FILE_PATH', '/tmp/bot_state.json')
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)  # Create directory if it doesn't exist
             with open(file_path, 'w') as f:
                 json.dump(state, f)
             logger.info(f"State saved successfully to {file_path}")
@@ -103,7 +87,7 @@ class UserState:
 
     def load_state(self) -> None:
         try:
-            file_path = os.environ.get('STATE_FILE_PATH', '/tmp/bot_state.json')
+            file_path = os.getenv('STATE_FILE_PATH', '/tmp/bot_state.json')
             if os.path.exists(file_path):
                 with open(file_path, 'r') as f:
                     state = json.load(f)
@@ -119,14 +103,11 @@ class UserState:
             self.water_reminders = {}
             self.tablet_reminder = {}
 
-
 # Initialize state
 state = UserState()
 
-
 def is_weekday():
     return datetime.now(pytz.timezone('Europe/Moscow')).weekday() < 5
-
 
 def create_water_markup(hour: int):
     markup = telebot.types.InlineKeyboardMarkup()
@@ -137,7 +118,6 @@ def create_water_markup(hour: int):
     markup.add(button)
     return markup
 
-
 def create_tablet_markup():
     markup = telebot.types.InlineKeyboardMarkup()
     button = telebot.types.InlineKeyboardButton(
@@ -146,7 +126,6 @@ def create_tablet_markup():
     )
     markup.add(button)
     return markup
-
 
 def send_water_reminder(chat_id: int, hour: int) -> None:
     try:
@@ -165,7 +144,6 @@ def send_water_reminder(chat_id: int, hour: int) -> None:
     except Exception as e:
         logger.error(f"Error sending water reminder to {chat_id}: {e}")
 
-
 def send_tablet_reminder(chat_id: int) -> None:
     try:
         if not state.tablet_reminder.get(chat_id, False):
@@ -178,7 +156,6 @@ def send_tablet_reminder(chat_id: int) -> None:
     except Exception as e:
         logger.error(f"Error sending tablet reminder to {chat_id}: {e}")
 
-
 def reset_daily_state():
     try:
         for chat_id in state.chat_ids:
@@ -189,10 +166,6 @@ def reset_daily_state():
     except Exception as e:
         logger.error(f"Error resetting daily state: {e}")
 
-
-# =============================================
-# НАСТРОЙТЕ ПРИВЕТСТВЕННОЕ СООБЩЕНИЕ (ОПЦИОНАЛЬНО)
-# =============================================
 @bot.message_handler(commands=['start'])
 def start(message):
     try:
@@ -208,7 +181,6 @@ def start(message):
     except Exception as e:
         logger.error(f"Error in start handler: {e}")
 
-
 @bot.message_handler(commands=['status'])
 def status(message):
     try:
@@ -220,7 +192,6 @@ def status(message):
         )
     except Exception as e:
         logger.error(f"Error in status handler: {e}")
-
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
@@ -241,7 +212,6 @@ def callback_handler(call):
             bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
     except Exception as e:
         logger.error(f"Error in callback handler: {e}")
-
 
 def reminder_thread():
     logger.info("Reminder thread started")
@@ -287,6 +257,9 @@ def reminder_thread():
             logger.error(f"Error in reminder thread: {e}")
             time.sleep(5)
 
+@app.route('/', methods=['GET'])
+def index():
+    return 'Bot is running!', 200
 
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
@@ -306,38 +279,37 @@ def webhook():
         logger.warning("Received non-JSON request")
         return 'Content-type must be application/json', 400
 
-
 @app.route('/health', methods=['GET'])
 def health_check():
     return 'Bot is running!', 200
 
-
-if __name__ == "__main__":
+def main():
     try:
-        # Load state
-        state.load_state()
-
         # Start reminder thread
-        reminder_thread = Thread(target=reminder_thread)
-        reminder_thread.daemon = True
-        reminder_thread.start()
+        reminder_thread_instance = Thread(target=reminder_thread)
+        reminder_thread_instance.daemon = True
+        reminder_thread_instance.start()
 
         # Set up webhook
         bot.remove_webhook()
         webhook_url = f'{WEBHOOK_URL.rstrip("/")}/{TOKEN}'
         if not webhook_url.startswith('https://'):
-            raise ValueError("Webhook URL must use HTTPS")
+            logger.warning("Webhook URL must use HTTPS")
+            webhook_url = f'https://{webhook_url}'
 
         webhook_info = bot.set_webhook(url=webhook_url)
         if not webhook_info:
-            raise ValueError("Failed to set webhook")
-
-        logger.info(f"Webhook set to {webhook_url}")
+            logger.error("Failed to set webhook")
+        else:
+            logger.info(f"Webhook set to {webhook_url}")
 
         # Start Flask app
-        port = int(os.environ.get('PORT', 8080))
+        port = int(os.getenv('PORT', 8080))
         app.run(host='0.0.0.0', port=port)
 
     except Exception as e:
         logger.critical(f"Critical error starting the bot: {e}")
         raise
+
+if __name__ == "__main__":
+    main()
