@@ -13,10 +13,25 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Токен бота
-TOKEN = '7598457393:AAGYDyzb67hgudu1e1wPiqet0imV-F6ZCiI'
+# Токен бота из переменных окружения
+TOKEN = os.environ.get('TOKEN')
+if not TOKEN:
+    raise ValueError("No TOKEN environment variable set")
+
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
+
+# Константы для сообщений
+WATER_MESSAGES = [
+    "Пора пить водичку! 💧 Не забывай о себе заботиться!",
+    "Время выпить стакан воды! 🌊 Твое здоровье важно!",
+    "Напоминаю про водичку! 💦 Сделай небольшой перерыв!",
+    "Выпей водички! 🚰 Это полезно для тебя!",
+    "Пора увлажниться! 💧 Вода - источник жизни!",
+    "Не забудь про водичку! 🌊 Твое тело скажет спасибо!"
+]
+
+TABLET_MESSAGE = "Милая, пора принять таблетку! 💊 Не забывай о своем здоровье! ❤️"
 
 
 # Структуры данных для хранения состояния пользователей
@@ -41,7 +56,8 @@ class UserState:
                 'water_reminders': self.water_reminders,
                 'tablet_reminder': self.tablet_reminder
             }
-            with open('bot_state.json', 'w') as f:
+            file_path = os.path.join(os.environ.get('TEMP', '/tmp'), 'bot_state.json')
+            with open(file_path, 'w') as f:
                 json.dump(state, f)
             logger.info("State saved successfully")
         except Exception as e:
@@ -49,7 +65,8 @@ class UserState:
 
     def load_state(self) -> None:
         try:
-            with open('bot_state.json', 'r') as f:
+            file_path = os.path.join(os.environ.get('TEMP', '/tmp'), 'bot_state.json')
+            with open(file_path, 'r') as f:
                 state = json.load(f)
                 self.chat_ids = state.get('chat_ids', [])
                 self.water_reminders = state.get('water_reminders', {})
@@ -69,8 +86,6 @@ class UserState:
 # Создаем глобальный объект состояния
 state = UserState()
 
-
-# Ваши существующие константы WATER_MESSAGES и TABLET_MESSAGE остаются без изменений...
 
 def is_weekday():
     return datetime.now(pytz.timezone('Europe/Moscow')).weekday() < 5
@@ -127,6 +142,17 @@ def send_tablet_reminder(chat_id: int) -> None:
         logger.error(f"Error sending tablet reminder to {chat_id}: {e}")
 
 
+def reset_daily_state():
+    try:
+        for chat_id in state.chat_ids:
+            state.water_reminders[chat_id] = {}
+            state.tablet_reminder[chat_id] = False
+        state.save_state()
+        logger.info("Daily state reset complete")
+    except Exception as e:
+        logger.error(f"Error resetting daily state: {e}")
+
+
 @bot.message_handler(commands=['start'])
 def start(message):
     try:
@@ -154,6 +180,27 @@ def status(message):
         )
     except Exception as e:
         logger.error(f"Error in status handler: {e}")
+
+
+@bot.callback_query_handler(func=lambda call: True)
+def callback_handler(call):
+    try:
+        if call.data.startswith('water_confirm_'):
+            hour = call.data.split('_')[2]
+            chat_id = call.message.chat.id
+            state.water_reminders[chat_id][str(hour)] = True
+            state.save_state()
+            bot.answer_callback_query(call.id, "Отлично! Продолжай в том же духе! 💪")
+            bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+
+        elif call.data == 'tablet_confirm':
+            chat_id = call.message.chat.id
+            state.tablet_reminder[chat_id] = True
+            state.save_state()
+            bot.answer_callback_query(call.id, "Молодец! Таблетка принята! 💊")
+            bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+    except Exception as e:
+        logger.error(f"Error in callback handler: {e}")
 
 
 def reminder_thread():
@@ -228,7 +275,8 @@ if __name__ == "__main__":
 
         # Настраиваем вебхук
         bot.remove_webhook()
-        bot.set_webhook(url=f'https://vita-bot.up.railway.app/{TOKEN}')
+        webhook_url = os.environ.get('WEBHOOK_URL', 'https://vita-bot.up.railway.app/')
+        bot.set_webhook(url=f'{webhook_url}/{TOKEN}')
 
         # Запускаем Flask приложение
         port = int(os.environ.get('PORT', 8080))
